@@ -1,363 +1,201 @@
-# coding: utf-8
-# # Step1. TSP Solving
-# Here comes 10 cities, we can easily show them below
-# - 1： (41, 94)；
-# - 2： (37, 84)；
-# - 3： (54, 67)；
-# - 4： (25, 62)；
-# - 5： (7, 64)；
-# - 6： (2, 99)；
-# - 7： (68, 58)；
-# - 8： (71, 44)；
-# - 9： (54, 62)；
-# - 10： (83, 69)
-
+# -*- coding: utf-8 -*-
+import geatpy as ea  # import geatpy
 import numpy as np
-import  random
-import matplotlib.pyplot as plt
+B=3
+R=3
+S=3
+T=3
+d=[[6,7,8],
+   [10,9,2],
+   [6,3,7]]
+dStart=[7,4,9]
+L=[1,3,3]
+U=[4,4,1]
+# t=[0,0,0]
+# Xijbr=np.zeros((3,3,3,3), dtype=np.int)
+# tMax=0
 
-# Hyperparameter
-# N_CITIES = 10  # DNA size
-# POP_SIZE = 500
-CROSS_RATE = 0.65    #Crossover rate
-MUTATE_RATE = 0.25  #Mutation rate
-N_GENERATIONS = 500 #epochs
-LOCS = [(41, 94),(37, 84),(54, 67),(25, 62),(7, 64),(2, 99),(68, 58),(71, 44),(54, 62),(83, 69)]
+class MyProblem(ea.Problem):  # 继承Problem父类
+    def __init__(self):
+        name = 'MyProblem'  # 初始化name（函数名称，可以随意设置）
+        M = 1  # 初始化M（目标维数）
+        maxormins = [1]  # 初始化maxormins（目标最小最大化标记列表，1：最小化该目标；-1：最大化该目标）
+        Dim = 81  # 初始化Dim（决策变量维数）
+        varTypes = [1] * Dim  # 初始化varTypes（决策变量的类型，元素为0表示对应的变量是连续的；1表示是离散的）
+        lb = [0] * Dim # 决策变量下界
+        ub = [1]  * Dim# 决策变量上界
+        lbin = [1] * Dim  # 决策变量下边界（0表示不包含该变量的下边界，1表示包含）
+        ubin = [1] * Dim  # 决策变量上边界（0表示不包含该变量的上边界，1表示包含）
+        # 调用父类构造方法完成实例化
+        ea.Problem.__init__(self, name, M, maxormins, Dim, varTypes, lb, ub, lbin, ubin)
+    def calReferObjV(self):  # 设定目标数参考值（本问题目标函数参考值设定为理论最优值）
+        referenceObjV  = np.array([[23]])
+        return referenceObjV
 
-# # Section1.Get adjoining matrix
+    def aimFunc(self, pop):  # 目标函数
+        Xijbr = pop.Phen.reshape([40,B,R,S,T])  # 得到决策变量矩阵
 
-# [Function name] CacDistance
-# [Function Usage] Calculate the distance between two points
-# [Parameter] Coordinates of two input points
-# [Return value] Returns the distance between two points
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
+        # 式5
+        preCV6 = Xijbr.sum(axis=(1, 2)) - np.ones((40,3, 3), dtype=np.int)  # b*r
+        CV6=np.zeros((40,1), dtype=np.int)
+        for q in range(40):
+            cnt=0
+            for b in range(B):
+                for r in range(R):
+                    if preCV6[q][b][r]>0:
+                        cnt+=1
+            CV6[q]+=cnt
+        # rCV6=CV6.sum(axis=(1, 2)).reshape(40,1)
 
-def CacDistance(a,b):
-    a = np.array(a)
-    b = np.array(b)
-    c = a-b
-    distance = np.sqrt(np.sum(c*c))
-    return distance
-    
-# [Function name] CityDistance
-# [Function Usage] Calculate the distance between cities and return the adjacent matrix representing the distance
-# [Parameter] None
-# [Return value] Returns the adjacent matrix representing the distance
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
+        #式3
+        Ttobr=np.zeros((40,3,3), dtype=np.int)          # b*r
+        for b in range(B):
+            for r in range (R):
+                # tempSum=np.zeros((40,1), dtype=np.int)
+                for i in range(S):
+                    for j in range(T):
+                        Ttobr[:,[b],[r]]+=d[i][j]*Xijbr[:,[i],[j],[b],[r]]
+                # Ttobr[:,[b],[r]]+=tempSum
 
-def CityDistance():
-    n = len(LOCS)
-    dis_mat = np.zeros([10,10])
-    for i in range(n-1):
-        for j in range(i+1,n):
-            dist = CacDistance(LOCS[i],LOCS[j])
-            dis_mat[i,j] = dist
+        #式4
+        TbackbrMin=np.zeros((40,3,3), dtype=np.int)          # b*r
+        for b in range(B):
+            for r in range(R-1):
+                for i in range(S):
+                    for j in range(T):
+                        tempSum=-1*np.ones((40,1), dtype=np.int)
+                        for k in range(S):
+                            tempSum+=Xijbr[:,[k],[j],[b],[r]]
+                        for l in range(T):
+                            tempSum+=Xijbr[:,[i],[l],[b],[r]]
+                        TbackbrMin[:,[b],[r]]=d[i][j]*tempSum
+                        # TbackbrMin[:, [b], [r]] = d[i][j] * (Xijbr[:, :, [j], [b], [r]].sum(axis=1)+Xijbr[:, [i], :, [b], [r]].sum(axis=1) - np.ones((40, 1), dtype=np.int))
+        # Tbackbr=np.zeros((40,3,3), dtype=np.int)          # b*r
+        # CV2=TbackbrMin-Tbackbr
 
-    for i in range(n):
-        dis_mat[:,i] = dis_mat[i,:]
+        #式2
+        # TmaxMin=np.zeros((3,), dtype=np.int)
+        TmaxMin=Ttobr.sum(axis=(2))+TbackbrMin.sum(axis=(2))
+        # for r in range(R):
+        #     TmaxMin+=Ttobr[:,r]+Tbackbr[:,r]
+        for i in range(S):
+            for j in range(T):
+                TmaxMin+=dStart[i]*Xijbr[:,[i],[j],:,[0]].reshape(40,3)
+        # Tmax = np.zeros((3,), dtype=np.int)  # b
+        # CV1= TmaxMin-Tmax
 
-    return dis_mat
+        #式6
+        # # CV3=np.zeros((40,3,2), dtype=np.int)          # b*(r-1)
+        # CV3 = np.zeros((40, 3, 3), dtype=np.int)  # b*(r-1)
+        # for b in range(B):
+        #     for r in range(R-1):
+        #         for i in range(S):
+        #             for j in range(T):
+        #                 CV3[:,[b],[r]]+=Xijbr[:,[i],[j],[b],[r+1]]-Xijbr[:,[i],[j],[b],[r]]
 
-# # Section2.Genetic algorithm
-# ## Section2.1 Cross
+        preCV3 = np.zeros((40, 3, 3), dtype=np.int)  # b*(r-1)
+        for b in range(B):
+            for r in range(R - 1):
+                for i in range(S):
+                    for j in range(T):
+                        preCV3[:, [b], [r]] += Xijbr[:, [i], [j], [b], [r + 1]] - Xijbr[:, [i], [j], [b], [r]]
+        CV3 = np.zeros((40, 1), dtype=np.int)
+        for q in range(40):
+            cnt=0
+            for b in range(B):
+                for r in range(R):
+                    if preCV3[q][b][r]>0:
+                        cnt+=1
+            CV3[q]+=cnt
 
-# [Function name] Cross
-# [Function Usage] Crossover between two sets of genes
-# [Parameter] Two sets of genes for crossover
-# [Return value] Return the two sets of genes after crossover
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
+        #式7
+        # # CV4=np.array(l)  # i in range S
+        # # tempCV4=np.stack([np.array(L) for _ in range(40)], axis=0)
+        # # CV4=np.stack((tempCV4,[np.zeros(40*3).reshape(40,3) for _ in range(2)]), axis=2)
+        # CV4 = np.stack((np.stack([np.array(L) for _ in range(40)], axis=0), np.zeros(40 * 3).reshape(40, 3),np.zeros(40 * 3).reshape(40, 3)), axis=2)
+        # # CV4 = np.array([l for _ in range(40)])
+        # # for j in range(T):
+        # #     for b in range(B):
+        # #         for r in range(R):
+        # #             CV4-=Xijbr[:,:,[j],[b],[r]].reshape(40,3)
+        # CV4[:,:,[0]]-=Xijbr.sum(axis=(2, 3,4)).reshape(40,3,1)
+        preCV4 =np.stack([np.array(L) for _ in range(40)], axis=0)
+        preCV4[:, :] -= Xijbr.sum(axis=(2, 3, 4)).reshape(40, 3)
+        CV4 = np.zeros((40, 1), dtype=np.int)
+        for q in range(40):
+            cnt = 0
+            for i in range(S):
+                if preCV4[q][i] > 0:
+                    cnt += 1
+            CV4[q] += cnt
 
-def Cross(p1,p2):
-    a = np.array(p1).copy()
-    b = np.array(p2).copy()
+        #式8
+        # CV5=-1*np.array(u)  # j in range T
+        # CV5=-1*np.stack([np.array(U) for _ in range(40)], axis=0)
+        # for i in range(S):
+        #     for b in range(B):
+        #         for r in range(R):
+        #             CV5+=Xijbr.sum(axis=(1, 3,4))
+        CV5=np.stack((-1*np.stack([np.array(U) for _ in range(40)], axis=0), np.zeros(40 * 3).reshape(40, 3),np.zeros(40 * 3).reshape(40, 3)), axis=2)
+        # for i in range(S):
+        #     for b in range(B):
+        #         for r in range(R):
+        CV5[:,:,[0]]+=Xijbr.sum(axis=(1, 3,4)).reshape(40,3,1)
 
-    # Randomly generate two integers between 0-9 as the starting point and ending point of the mapping
-    begin = random.randint(0,9)
-    end = random.randint(0,9)
-    # Make `begin` less than `end`
-    if begin > end:
-        temp = begin
-        begin = end
-        end = temp
-        
-    #print begin,end        #Used for debugging
-    
-    # Establish a mapping relationship
-    cross_map = {}
-    is_exist = False
-    # Preliminary mapping
-    for i in range(begin,end+1):
-        if a[i] not in cross_map.keys():
-            cross_map[a[i]] = []
-        if b[i] not in cross_map.keys():
-            cross_map[b[i]] = []
+        # preCV5 = np.stack([np.array(U) for _ in range(40)], axis=0)
+        # preCV5[:, :] -= Xijbr.sum(axis=(1, 3, 4)).reshape(40, 3)
+        # CV5 = np.zeros((40, 1), dtype=np.int)
+        # for q in range(40):
+        #     cnt = 0
+        #     for j in range(T):
+        #         if preCV5[q][j] < 0:
+        #             cnt += 1
+        #     CV5[q] += cnt
 
-        cross_map[a[i]].append(b[i])
-        cross_map[b[i]].append(a[i])
+        pop.ObjV = np.max(TmaxMin, axis=1).reshape(40, 1)  # 计算目标函数值，赋值给pop种群对象的ObjV属性
+        pop.CV=np.hstack([CV3,   #CV3.sum(axis=(1, 2)).reshape(40,1),    # CV2.sum(axis=(1, 2)).reshape(40,1),
+                          CV4,    #CV4.sum(axis=(1, 2)).reshape(40,1),
+                          #CV5,      #CV5.sum(axis=(1, 2)).reshape(40,1),
+                          CV5.sum(axis=(1, 2)).reshape(40, 1),
+                          # CV6.sum(axis=(1, 2)).reshape(40,1),
+                          CV6])
 
-    # Processing transfer mapping such as 1:[6],6:[3,1]-->1:[6,3,1],6:[3,1]
-    # Count the number of occurrences of the element in the substring, the number is 2, then the element is the intermediate node passed, such as 1:[6],6:[3,1], the number of occurrences of ‘6’ is 2.
-    
-    appear_times = {}
-    for i in range(begin,end+1):
-        if a[i] not in appear_times.keys():
-            appear_times[a[i]] = 0
-        if b[i] not in appear_times.keys():
-            appear_times[b[i]] = 0
 
-        appear_times[a[i]] += 1
-        appear_times[b[i]] += 1
-
-        if a[i] == b[i]:
-            appear_times[a[i]] -= 1
-
-    for k,v in appear_times.items():
-        if v == 2:
-            values = cross_map[k]
-            for key in values:
-                cross_map[key].extend(values)
-                cross_map[key].append(k)
-                cross_map[key].remove(key)
-                cross_map[key] = list(set(cross_map[key]))
-
-    # Use mapping cross
-    # First map the selected substring
-    temp = a[begin:end+1].copy()
-    a[begin:end+1] = b[begin:end+1]
-    b[begin:end+1] = temp
-
-    # Map the remaining substrings according to the mapping rules
-    
-    seg_a = a[begin:end+1]
-    seg_b = b[begin:end+1]
-
-    remain = list(range(begin))
-    remain.extend(range(end+1,len(a)))
-
-    for i in remain:
-        keys = cross_map.keys()
-        if a[i] in keys:
-            for fi in cross_map[a[i]]:
-                if fi not in seg_a:
-                    a[i] = fi
-                    break
-
-        if b[i] in keys:
-            for fi in cross_map[b[i]]:
-                if fi not in seg_b:
-                    b[i] = fi
-                    break
-
-    return a,b            
-
-# ## Section2.2 Variation
-# [Function name] Variation
-# [Function Usage] Variation between two sets of genes
-# [Parameter] Two sets of genes for variation
-# [Return value] Return the two sets of genes after Variation
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def Variation(s):
-    c = range(10)
-    index1,index2 = random.sample(c,2)
-    temp = s[index1]
-    s[index1] = s[index2]
-    s[index2] = temp
-    return s
-
-# ## Section2.3 Calculate the fitness
-# [Function name] cost
-# [Function Usage] Calculate the fitness
-# [Parameter] the set of genes for Calculating the fitness
-# [Return value] Return the fitness. Since we require the minimum distance to be calculated, we should calculate the fitness value with negative
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def cost(s):
-    dis = CityDistance()
-    n = len(s)
-    cost = 0
-    for i in range(n):
-        cost += dis[s[i],s[(i+1)%n]]
-    return -cost
-
-# ## Section2.4 The key part of genetic algorithm
-# [Function name] TakeThird
-# [Function Usage] The parameter is a list to be sorted
-# [Parameter] the set of genes for Calculating the fitness
-# [Return value] Return the third element of the list
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def TakeThird(elem):
-    return elem[2]
-    
-# [Function name] CacAdap
-# [Function Usage] Calculate the fitness of each individual and select the probability
-# [Parameter] Population used to calculate fitness
-# [Return value] Return the fitness of each individual
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def CacAdap(population):
-    adap = []   # adap n*4,n is the number of rows, each row includes: individual index, fitness, selection probability, cumulative probability
-    psum = 0
-    # Calculate fitness
-    i = 0
-    for p in population:
-        icost = np.exp(cost(p))
-        psum += icost
-        # Add individual subscripts
-        adap.append([i])
-        # Add fitness
-        adap[i].append(icost)
-        i += 1
-    # Calculate the probability of selection
-    for p in adap:
-        # Add selection probability and cumulative probability, here cumulative probability is temporarily equal to selection probability, and the assignment will be recalculated later
-        p.append(p[1]/psum)
-        p.append(p[2])
-
-    # Sort according to fitness
-    adap.sort(key=TakeThird,reverse=True)
-    #print adap     #Used for debugging
-    # Calculate cumulative probability
-    n = len(adap)
-    for i in range(1,n):
-        p = adap[i][3] + adap[i-1][3]
-        adap[i][3] = p
-    
-    return adap
-
-# [Function name] Chose
-# [Function Usage] Take turns to choose according to the adap
-# [Parameter] the fitness of each individual
-# [Return value] Return the list of this turns chosen
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def Chose(adap):
-
-    chose = []
-    # Number of choices
-    epochs = N_GENERATIONS//2           # max(len(adap)//2,N_GENERATIONS//2)    #20
-    '''
-    #while(len(set(chose)) <2):
-    #print 'chosing...length %d'%len(set(chose))
-    '''
-    n = len(adap)
-    for a in range(epochs):
-        p = random.random()
-        if adap[0][3] >= p:
-            chose.append(adap[0][0])
-        else:
-            for i in range(1,n):
-                if adap[i][3] >= p and adap[i-1][3] < p:
-                    chose.append(adap[i][0])
-                    break
-
-    chose = list((chose))
-    return chose
-
-# [Function name] Cross_Variation
-# [Function Usage] Gene crossover and mutation
-# [Parameter] Population and cross mutation selection results for mutation
-# [Return value] Return the Population after cross mutation
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def Cross_Variation(chose,population):
-    # Cross mutation
-    chose_num = len(chose)
-    sample_times = chose_num//2
-    for i in range(sample_times):
-        index1,index2 = random.sample(chose,2)
-        #print index1,index2        #Used for debugging
-        # Parent node participating in crossover
-        parent1 = population[index1]
-        parent2 = population[index2]
-        # These two parent nodes have crossed, so don’t participate later, so remove them from the sample
-        chose.remove(index1)
-        chose.remove(index2)
-        
-        p = random.random()
-        if CROSS_RATE >= p:
-            child1,child2 = Cross(parent1,parent2)
-            #print child1,child2        #Used for debugging
-            p1 = random.random()
-            p2 = random.random()
-            if MUTATE_RATE > p1:
-                child1 = Variation(child1)
-            if MUTATE_RATE > p2:
-                child2 = Variation(child2)
-            population.append(list(child1))
-            population.append(list(child2))
-    return population
-
-# [Function name] GA
-# [Function Usage] Describes a complete genetic process
-# [Parameter] the population in the genetic process
-# [Return value] Return the Population after genetic variation
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def GA(population):  
-    adap = CacAdap(population)
-    chose = Chose(adap)     #Select the fragments to be cross-mutated
-    population = Cross_Variation(chose,population)      #Cross mutation
-    return population
-
-# ## Section2.5 Call the genetic algorithm repeatedly until the termination condition is reached
-# [Function name] find_min
-# [Function Usage] Using genetic algorithm to find the minimum total distance
-# [Parameter] The initial population used to find the shortest total distance
-# [Return value] None
-# [Developer and date] Zhi DING 2020/11/24
-# [Change Record] None
-
-def find_min(population):
-    loss = []
-    #epochs = 51     #Genetic frequency
-    i = 0
-    while i < N_GENERATIONS:
-        adap = []
-        # Calculate fitness
-        for p in population:
-            icost = cost(p)
-            adap.append(icost)
-        
-        # Update population using genetic algorithm
-        population = GA(population)
-        
-        min_cost = max(adap)
-        print('epoch %d: loss=%.2f'%(i,-min_cost))
-        loss.append([i,-min_cost])
-        i += 1
-        if i == N_GENERATIONS:
-            # Output optimal solution
-            p_len = len(population)
-            for index in range(p_len):
-                if adap[index] == min_cost:
-                    print('Optimal path:')
-                    print(population[index])
-                    print('Optimal cost:')
-                    print(-min_cost)
-                    break
-    # Make a schematic diagram of the loss function and output
-    loss = np.array(loss)
-    plt.plot(loss[:,0],loss[:,1])
-    plt.title('GA')
-    plt.show()
-
-# Initialize the original population
-s1 = [1,2,3,4,5,6,7,8,9,0]
-s2 = [5,4,6,9,2,1,7,8,3,0]
-s3 = [0,1,2,3,7,8,9,4,5,6]
-s4 = [2,4,3,1,5,7,6,8,9,0]
-population = [s1,s2,s3,s4]
-# According to genetic algorithm, find the best route
-find_min(population)
+if __name__ == '__main__':
+    """===============================实例化问题对象==========================="""
+    problem = MyProblem()  # 生成问题对象
+    """=================================种群设置=============================="""
+    Encoding = 'BG'  # 编码方式
+    NIND = 40  # 种群规模
+    Field = ea.crtfld(Encoding, problem.varTypes, problem.ranges, problem.borders)  # 创建区域描述器
+    population = ea.Population(Encoding, Field, NIND)  # 实例化种群对象（此时种群还没被初始化，仅仅是完成种群对象的实例化）
+    """===============================算法参数设置============================="""
+    myAlgorithm = ea.soea_SEGA_templet(problem, population)  # 实例化一个算法模板对象
+    myAlgorithm.MAXGEN = 100  # 最大进化代数
+    myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
+    myAlgorithm.verbose = True  # 设置是否打印输出日志信息
+    myAlgorithm.drawing = 1  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
+    """==========================调用算法模板进行种群进化========================"""
+    [BestIndi, population] = myAlgorithm.run()  # 执行算法模板，得到最优个体以及最后一代种群
+    BestIndi.save()  # 把最优个体的信息保存到文件中
+    """=================================输出结果=============================="""
+    print('评价次数：%s' % myAlgorithm.evalsNum)
+    print('时间已过 %s 秒' % myAlgorithm.passTime)
+    if BestIndi.sizes != 0:
+        print('最优的目标函数值为：%s' % BestIndi.ObjV[0][0])
+        print('最优的控制变量值为：')
+        for i in range(BestIndi.Phen.shape[1]):
+            print(BestIndi.Phen[0, i],end=" ")
+        print("")
+        print('最优的i,j,b,r值为：')
+        print(' |  b  |  r  |  i  |  j  | ')
+        print('---------------------------')
+        Xijbr=BestIndi.Phen.reshape(3,3,3,3)
+        for b in range(B):
+            for r in range(R):
+                for i in range(S):
+                    for j in range(T):
+                        if(Xijbr[i][j][b][r]==1):
+                            print(" | ",b+1," | ",r+1," | ",i+1," | ",j+1," | ")
+    else:
+        print('没找到可行解。')
