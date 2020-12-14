@@ -12,7 +12,7 @@ d=np.array([[6,7,8],
 dStart=np.array([7,4,9])
 L=np.array([1,3,3])
 U=np.array([4,4,1])
-Nind=40
+Nind=8000
 
 class MyProblem(ea.Problem):  # 继承Problem父类
     def __init__(self):
@@ -27,13 +27,12 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         ubin = [1] * Dim  # 决策变量上边界（0表示不包含该变量的上边界，1表示包含）
         # 调用父类构造方法完成实例化
         ea.Problem.__init__(self, name, M, maxormins, Dim, varTypes, lb, ub, lbin, ubin)
-    def calReferObjV(self):  # 设定目标数参考值（本问题目标函数参考值设定为理论最优值）
-        referenceObjV  = np.array([[23]])
-        return referenceObjV
+    # def calReferObjV(self):  # 设定目标数参考值（本问题目标函数参考值设定为理论最优值）
+    #     referenceObjV  = np.array([[23]])
+    #     return referenceObjV
 
     def aimFunc(self, pop):  # 目标函数
-        Xijbr = pop.Phen.reshape([Nind,B,R,S,T])  # 得到决策变量矩阵
-
+        Xijbr = pop.Phen.reshape([Nind,S,T,B,R])  # 得到决策变量矩阵
         # 式5
         preCV6 = Xijbr.sum(axis=(1, 2)) - np.ones((Nind,B, R), dtype=np.int)  # b*r
         CV6=np.zeros((Nind,1), dtype=np.int)
@@ -108,7 +107,34 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                           CV5,
                           CV6])
 
+def initData():
+    L = np.ones(3)
+    U = np.zeros(3)     #初始化
+    while (L.sum() > U.sum()):      #防止生成的数据本身无法满足救援条件
+        B = random.randint(2, 5)
+        R = random.randint(2, 5)
+        S = random.randint(2, 5)
+        T = random.randint(2, 5)
+        d = np.random.randint(1, 11, size=(S, T))
+        dStart = np.random.randint(1, 11, size=S)
+        L = np.random.randint(1, 6, size=S)
+        U = np.random.randint(1, 6, size=T)
+    print('本次基因长度为 %d ,随机生成的变量值为：'%(S*T*B*R))
+    print(' |  S  |  T  |  B  |  R  | ')
+    print('---------------------------')
+    print(" | ", S, " | ", T, " | ", B, " | ", R, " | ")
+    print('Source 与 Sink 间距离矩阵')
+    print(d)
+    print('Single Yard 与各个 Source 间距离矩阵')
+    print(dStart)
+    print('%d 个 Source 的待救援者人数分别为' % S)
+    print(L)
+    print('%d 个 Sink 的最大容量分别为' % T)
+    print(U)
+
 if __name__ == '__main__':
+    """==============================随机生成原始数据=========================="""
+    initData()
     """===============================实例化问题对象==========================="""
     problem = MyProblem()  # 生成问题对象
     """=================================种群设置=============================="""
@@ -118,7 +144,7 @@ if __name__ == '__main__':
     population = ea.Population(Encoding, Field, NIND)  # 实例化种群对象（此时种群还没被初始化，仅仅是完成种群对象的实例化）
     """===============================算法参数设置============================="""
     myAlgorithm = ea.soea_SEGA_templet(problem, population)  # 实例化一个算法模板对象
-    myAlgorithm.MAXGEN = 5000  # 最大进化代数
+    myAlgorithm.MAXGEN = 300  # 最大进化代数
     myAlgorithm.recOper = ea.Xovdp(XOVR = 0.8,Parallel=True) # 设置交叉算子
     myAlgorithm.mutOper = ea.Mutinv(Pm =0.95,Parallel=True)  # 设置变异算子
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
@@ -149,15 +175,15 @@ if __name__ == '__main__':
                     for j in range(T):
                         if(Xijbr[i][j][b][r]==1):
                             print(" | ",b+1," | ",r+1," | ",i+1," | ",j+1," | ")
-        print('[验证各个约束条件]')
-        print('验证式8：U=[4,4,1],Xijbr(sum)=',Xijbr.sum(axis=(0,2,3)))
-        print('验证式7：L=[1,3,3],Xijbr(sum)=',Xijbr.sum(axis=(1,2,3)))
-        print('验证式6：左侧=', Xijbr.sum(axis=(0,1))[:,[0,1]],'右侧=', Xijbr.sum(axis=(0,1))[:,[1,2]])
-        print('验证式5：左侧=', Xijbr.sum(axis=(0,1)))
-        Ttobr = np.ones((B, R), dtype=np.int)
-        for b in range(B):
-            for r in range(R):
-                Ttobr[b, r] = (d * Xijbr[:, :, b, r]).sum(axis=(0,1))
-        print('Ttobr=',Ttobr)
+        # print('[验证各个约束条件]')
+        # print('验证式8：U=[4,4,1],Xijbr(sum)=',Xijbr.sum(axis=(0,2,3)))
+        # print('验证式7：L=[1,3,3],Xijbr(sum)=',Xijbr.sum(axis=(1,2,3)))
+        # print('验证式6：左侧=', Xijbr.sum(axis=(0,1))[:,[0,1]],'右侧=', Xijbr.sum(axis=(0,1))[:,[1,2]])
+        # print('验证式5：左侧=', Xijbr.sum(axis=(0,1)))
+        # Ttobr = np.ones((B, R), dtype=np.int)
+        # for b in range(B):
+        #     for r in range(R):
+        #         Ttobr[b, r] = (d * Xijbr[:, :, b, r]).sum(axis=(0,1))
+        # print('Ttobr=',Ttobr)
     else:
         print('没找到可行解。')
