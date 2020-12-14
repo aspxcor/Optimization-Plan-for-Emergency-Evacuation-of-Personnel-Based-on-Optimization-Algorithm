@@ -11,6 +11,7 @@ d=[[6,7,8],
 dStart=[7,4,9]
 L=[1,3,3]
 U=[4,4,1]
+Nind=40
 # t=[0,0,0]
 # Xijbr=np.zeros((3,3,3,3), dtype=np.int)
 # tMax=0
@@ -39,64 +40,41 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         preCV6 = Xijbr.sum(axis=(1, 2)) - np.ones((40,3, 3), dtype=np.int)  # b*r
         CV6=np.zeros((40,1), dtype=np.int)
         for q in range(40):
-            # cnt=0
             for b in range(B):
                 for r in range(R):
                     if preCV6[q][b][r]>0:
                         # cnt+=1
                         CV6[q] += preCV6[q][b][r]
-            # CV6[q]+=cnt
-        # rCV6=CV6.sum(axis=(1, 2)).reshape(40,1)
 
-        #式3
-        # Ttobr=np.zeros((40,3,3), dtype=np.int)          # b*r
-        TTemp=np.ones((40,3,3,3,3),dtype=np.int)
+        # #式3
+        Ttobr=np.zeros((40,3,3), dtype=np.int)          # b*r
         for b in range(B):
-            for r in range (R):
-                # # tempSum=np.zeros((40,1), dtype=np.int)
-                # for i in range(S):
-                #     for j in range(T):
-                #         Ttobr[:,[b],[r]]+=d[i][j]*Xijbr[:,[i],[j],[b],[r]]
-                # # Ttobr[:,[b],[r]]+=tempSum
-                TTemp[:,:,:,b,r]=d*Xijbr[:,:,:,b,r]
-        Ttobr=TTemp.sum(axis=(1,2))          # b*r
-
-        #式4
-        TbackbrMin=np.zeros((40,3,3), dtype=np.int)          # b*r
-        for b in range(B):
-            for r in range(R-1):
+            for r in range(R):
                 for i in range(S):
                     for j in range(T):
-                        tempSum=-1*np.ones((40,1), dtype=np.int)
-                        for k in range(S):
-                            tempSum+=Xijbr[:,[k],[j],[b],[r]]
-                        for l in range(T):
-                            tempSum+=Xijbr[:,[i],[l],[b],[r+1]]
-                        if (d[i][j]*tempSum > TbackbrMin[:,[b],[r]]).any():         # 注意研究这里要不要用any()方法
-                            TbackbrMin[:, [b], [r]]= d[i][j]*tempSum
-                        # TbackbrMin[:, [b], [r]] = d[i][j] * (Xijbr[:, :, [j], [b], [r]].sum(axis=1)+Xijbr[:, [i], :, [b], [r]].sum(axis=1) - np.ones((40, 1), dtype=np.int))
-        # Tbackbr=np.zeros((40,3,3), dtype=np.int)          # b*r
-        # CV2=TbackbrMin-Tbackbr
+                        Ttobr[:,[b],[r]]+=d[i][j]*Xijbr[:,[i],[j],[b],[r]]
+
+        #式4
+        TbackbrMin=np.zeros((Nind, B, R-1), dtype=np.int)       # b*(r-1)
+        for b in range(B):
+            for r in range(R-1):
+                TempTable = np.zeros((40, S, T), dtype=np.int)
+                for i in range(S):
+                    for j in range(T):
+                        TempTable[:,[i],[j]]=d[i][j]*(Xijbr[:,:,[j],[b],[r]].sum(axis=1)+Xijbr[:,[i],:,[b],[r+1]].reshape(40,3).sum(axis=1).reshape(40,1)-np.ones((40,1), dtype=np.int))
+                for q in range(Nind):
+                    TbackbrMin[q][b][r]=TempTable[q].max()
+
+
+
 
         #式2
-        # TmaxMin=np.zeros((3,), dtype=np.int)
         TmaxMin=Ttobr.sum(axis=(2))+TbackbrMin.sum(axis=(2))        #40*b(40*3)
-        # for r in range(R):
-        #     TmaxMin+=Ttobr[:,r]+Tbackbr[:,r]
         for i in range(S):
             for j in range(T):
                 TmaxMin+=dStart[i]*Xijbr[:,[i],[j],:,[0]].reshape(40,3)
-        # Tmax = np.zeros((3,), dtype=np.int)  # b
-        # CV1= TmaxMin-Tmax
 
         #式6
-        # # CV3=np.zeros((40,3,2), dtype=np.int)          # b*(r-1)
-        # CV3 = np.zeros((40, 3, 3), dtype=np.int)  # b*(r-1)
-        # for b in range(B):
-        #     for r in range(R-1):
-        #         for i in range(S):
-        #             for j in range(T):
-        #                 CV3[:,[b],[r]]+=Xijbr[:,[i],[j],[b],[r+1]]-Xijbr[:,[i],[j],[b],[r]]
 
         preCV3 = np.zeros((40, 3, 3), dtype=np.int)  # b*(r-1)
         for b in range(B):
@@ -111,59 +89,29 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                 for r in range(R):
                     if preCV3[q][b][r]>0:
                         CV3[q]+=preCV3[q][b][r]
-            # CV3[q]+=cnt
 
         #式7
-        # # CV4=np.array(l)  # i in range S
-        # # tempCV4=np.stack([np.array(L) for _ in range(40)], axis=0)
-        # # CV4=np.stack((tempCV4,[np.zeros(40*3).reshape(40,3) for _ in range(2)]), axis=2)
-        # CV4 = np.stack((np.stack([np.array(L) for _ in range(40)], axis=0), np.zeros(40 * 3).reshape(40, 3),np.zeros(40 * 3).reshape(40, 3)), axis=2)
-        # # CV4 = np.array([l for _ in range(40)])
-        # # for j in range(T):
-        # #     for b in range(B):
-        # #         for r in range(R):
-        # #             CV4-=Xijbr[:,:,[j],[b],[r]].reshape(40,3)
-        # CV4[:,:,[0]]-=Xijbr.sum(axis=(2, 3,4)).reshape(40,3,1)
         preCV4 =np.stack([np.array(L) for _ in range(40)], axis=0)
         preCV4[:, :] -= Xijbr.sum(axis=(2, 3, 4)).reshape(40, 3)
         CV4 = np.zeros((40, 1), dtype=np.int)
         for q in range(40):
-            # cnt = 0
             for i in range(S):
                 if preCV4[q][i] > 0:
-                    # cnt += 1
                     CV4[q] += preCV4[q][i]
-            # CV4[q] += cnt
 
         #式8
-        # # CV5=-1*np.array(u)  # j in range T
-        # # CV5=-1*np.stack([np.array(U) for _ in range(40)], axis=0)
-        # # for i in range(S):
-        # #     for b in range(B):
-        # #         for r in range(R):
-        # #             CV5+=Xijbr.sum(axis=(1, 3,4))
-        # CV5=np.stack((-1*np.stack([np.array(U) for _ in range(40)], axis=0), np.zeros(40 * 3).reshape(40, 3),np.zeros(40 * 3).reshape(40, 3)), axis=2)
-        # # for i in range(S):
-        # #     for b in range(B):
-        # #         for r in range(R):
-        # CV5[:,:,[0]]+=Xijbr.sum(axis=(1, 3,4)).reshape(40,3,1)
-
         preCV5 = np.stack([np.array(U) for _ in range(40)], axis=0)
         preCV5[:, :] -= Xijbr.sum(axis=(1, 3, 4)).reshape(40, 3)
         CV5 = np.zeros((40, 1), dtype=np.int)
         for q in range(40):
-            # cnt = 0
             for j in range(T):
                 if preCV5[q][j] < 0:
                     CV5[q] -= preCV5[q][j]
-            # CV5[q] += cnt
 
         pop.ObjV = np.max(TmaxMin, axis=1).reshape(40, 1)  # 计算目标函数值，赋值给pop种群对象的ObjV属性
-        pop.CV=np.hstack([CV3,   #CV3.sum(axis=(1, 2)).reshape(40,1),    # CV2.sum(axis=(1, 2)).reshape(40,1),
-                          CV4,    #CV4.sum(axis=(1, 2)).reshape(40,1),
-                          CV5,      #CV5.sum(axis=(1, 2)).reshape(40,1),
-                          # CV5.sum(axis=(1, 2)).reshape(40, 1),
-                          # CV6.sum(axis=(1, 2)).reshape(40,1),
+        pop.CV=np.hstack([CV3,
+                          CV4,
+                          CV5,
                           CV6])
 
 
@@ -178,10 +126,15 @@ if __name__ == '__main__':
     """===============================算法参数设置============================="""
     myAlgorithm = ea.soea_SEGA_templet(problem, population)  # 实例化一个算法模板对象
     myAlgorithm.MAXGEN = 5000  # 最大进化代数
+    myAlgorithm.recOper = ea.Xovdp(XOVR = 0.8,Parallel=True) # 设置交叉算子
+    myAlgorithm.mutOper = ea.Mutinv(Pm =0.95,Parallel=True)  # 设置变异算子
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
     myAlgorithm.verbose = True  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 1  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
     """==========================调用算法模板进行种群进化========================"""
+    # prophetChrom=np.array([[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0]])
+    # prophetPop=ea.Population(Encoding, Field, 1,prophetChrom,)
+    # [BestIndi, population] = myAlgorithm.run(prophetPop)  # 执行算法模板，得到最优个体以及最后一代种群
     [BestIndi, population] = myAlgorithm.run()  # 执行算法模板，得到最优个体以及最后一代种群
     BestIndi.save()  # 把最优个体的信息保存到文件中
     """=================================输出结果=============================="""
@@ -212,8 +165,6 @@ if __name__ == '__main__':
         for b in range(B):
             for r in range(R):
                 Ttobr[b, r] = (d * Xijbr[:, :, b, r]).sum(axis=(0,1))
-        # Ttobr = TTemp.sum(axis=(1, 2))  # b*r
         print('Ttobr=',Ttobr)
-        print('验证式4：TBackBr=', Xijbr.sum(axis=(0,1)))
     else:
         print('没找到可行解。')
