@@ -4,6 +4,7 @@ import numpy as np
 from scipy.io import loadmat
 m = loadmat("xingguo.mat")
 B=3     # 自行设定 可控制变量
+# B=m['BusBlank'][0][0]
 Y=m['depot'][0][0]
 S=m['ND'][0][0]
 T=m['NS'][0][0]
@@ -91,15 +92,18 @@ if __name__ == '__main__':
     myAlgorithm.recOper = ea.Xovdp(XOVR=0.9, Parallel=True)  # 设置交叉算子
     myAlgorithm.mutOper = ea.Mutinv(Pm=0.5, Parallel=True)  # 设置变异算子
 
-    myAlgorithm.MAXGEN = 800  # 最大进化代数
+    myAlgorithm.MAXGEN = 1000  # 最大进化代数
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
     myAlgorithm.verbose = True  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 1  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
     """===========================根据先验知识创建先知种群========================"""
-    tmpChrom1 = np.concatenate([np.ones(L[_], dtype=int) * _ for _ in range(S)]).reshape(1,numOfGenetic)
-    tmpChrom2 = np.concatenate([np.ones(U[_], dtype=int) * (_ + S) for _ in range(T)])[:numOfGenetic].reshape(1,numOfGenetic)
+    tmpChrom1 = np.concatenate([np.ones(L[_], dtype=int) * _ for _ in range(S)])
+    tmpChrom2 = np.concatenate([np.ones(U[_], dtype=int) * (_ + S) for _ in range(T)])
     tmpChrom3 = np.array([_ * numOfGenetic // B for _ in range(1, B)]).reshape(1,B-1)
-    prophetChrom = [tmpChrom1, tmpChrom2, tmpChrom3]
+    np.random.shuffle(tmpChrom1)
+    np.random.shuffle(tmpChrom2)
+    tmpChrom2 = tmpChrom2[: numOfGenetic].reshape(1, numOfGenetic)
+    prophetChrom = [tmpChrom1.reshape(1,numOfGenetic), tmpChrom2, tmpChrom3]
     prophetPop=ea.PsyPopulation(Encodings, Fields, 1,prophetChrom)
     myAlgorithm.call_aimFunc(prophetPop)  # 计算先知种群的目标函数值及约束（假如有约束）
     """==========================调用算法模板进行种群进化========================"""
