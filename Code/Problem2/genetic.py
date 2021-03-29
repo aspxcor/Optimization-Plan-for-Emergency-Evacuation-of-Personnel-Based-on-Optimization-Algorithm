@@ -48,10 +48,6 @@ class MyProblem(ea.Problem):  # 继承Problem父类
 
             Turn.sort()
 
-            #按三辆车切片
-            # SInTurnOfCar = [SInTurn[:Turn[0]+1],SInTurn[Turn[0]+1:Turn[1]+1],SInTurn[Turn[1]+1:]]
-            # TInTurnOfCar = [TInTurn[:Turn[0]+1],TInTurn[Turn[0]+1:Turn[1]+1],TInTurn[Turn[1]+1:]]
-
             #按B辆车辆进行切片
             SInTurnOfCar = [SInTurn[:Turn[0] + 1]] + [SInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [SInTurn[Turn[B-2] + 1:]]
             TInTurnOfCar = [TInTurn[:Turn[0] + 1]] + [TInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [TInTurn[Turn[B-2] + 1:]]
