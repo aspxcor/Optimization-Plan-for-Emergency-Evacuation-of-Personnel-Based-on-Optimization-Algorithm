@@ -5,7 +5,7 @@
 [![Package Status](https://img.shields.io/pypi/status/geatpy.svg)](https://pypi.org/project/geatpy/)
 ![Python](https://img.shields.io/badge/python->=3.5-green.svg)
 ![Pypi](https://img.shields.io/badge/pypi-2.6.0-blue.svg)
-![Geatpy](https://img.shields.io/badge/geatpy-==2.6-purple.svg)
+![Geatpy](https://img.shields.io/badge/geatpy-2.6.0-purple.svg)
 [![License](https://img.shields.io/pypi/l/geatpy.svg)](https://github.com/geatpy-dev/geatpy/blob/master/LICENSE)
 [![Gitter](https://badges.gitter.im/geatpy2/community.svg)](https://gitter.im/geatpy2/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 ## 项目背景 | ***Background of Project***
