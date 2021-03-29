@@ -3,7 +3,6 @@ import geatpy as ea
 import numpy as np
 from scipy.io import loadmat
 m = loadmat("xingguo.mat")
-# B=3
 B=m['BusBlank'][0][0]       # 自行设定 可控制变量
 Y=m['depot'][0][0]
 S=m['ND'][0][0]
@@ -14,6 +13,7 @@ L=m['DSeparate'].reshape(S)
 U=m['SSeparate'].reshape(T)
 numOfGenetic=L.sum()
 Nind=100
+
 
 class MyProblem(ea.Problem):  # 继承Problem父类
     def __init__(self):
@@ -94,8 +94,9 @@ if __name__ == '__main__':
     myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 实例化一个算法模板对象
     myAlgorithm.recOper = ea.Xovdp(XOVR=0.9, Parallel=True)  # 设置交叉算子
     myAlgorithm.mutOper = ea.Mutinv(Pm=0.5, Parallel=True)  # 设置变异算子
-
-    myAlgorithm.MAXGEN = 400  # 最大进化代数
+    # myAlgorithm.trappedValue = 1e-6  # “进化停滞”判断阈值
+    # myAlgorithm.maxTrappedCount = 30  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
+    myAlgorithm.MAXGEN = 500  # 最大进化代数
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
     myAlgorithm.verbose = True  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 1  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
