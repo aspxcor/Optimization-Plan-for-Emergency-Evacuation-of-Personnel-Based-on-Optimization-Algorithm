@@ -2,6 +2,7 @@
 import geatpy as ea
 import numpy as np
 from scipy.io import loadmat
+import random
 m = loadmat("xingguo.mat")
 B=m['BusBlank'][0][0]       # 自行设定 可控制变量
 Y=m['depot'][0][0]
@@ -12,8 +13,8 @@ Dij=m['path']       # 编号规则 从0开始编号，编号顺序 S~T~Y
 L=m['DSeparate'].reshape(S)
 U=m['SSeparate'].reshape(T)
 numOfGenetic=L.sum()
-Nind=100
-
+Nind=300
+Chrom3Probability=0.7
 
 class MyProblem(ea.Problem):  # 继承Problem父类
     def __init__(self):
@@ -29,9 +30,9 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         # 调用父类构造方法完成实例化
         ea.Problem.__init__(self, name, M, maxormins, Dim, varTypes, lb, ub, lbin, ubin)
 
-    # def calReferObjV(self):  # 设定目标数参考值（本问题目标函数参考值设定为理论最优值）
-    #     referenceObjV  = np.array([[23]])
-    #     return referenceObjV
+    def calReferObjV(self):  # 设定目标数参考值（本问题目标函数参考值设定为理论最优值）
+        referenceObjV  = np.array([[600]])
+        return referenceObjV
 
     def aimFunc(self, pop):  # 目标函数
         SInTurns = pop.Phen[:, :numOfGenetic].astype(int)
@@ -87,28 +88,37 @@ if __name__ == '__main__':
     Fields = [Field1, Field2, Field3]  # 创建区域描述器
     population = ea.PsyPopulation(Encodings, Fields, NIND)  # 实例化种群对象（此时种群还没被初始化，仅仅是完成种群对象的实例化）
     """===============================算法参数设置============================="""
-    myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 实例化一个算法模板对象
-    myAlgorithm.recOper = ea.Xovdp(XOVR=0.9, Parallel=True)  # 设置交叉算子
-    myAlgorithm.mutOper = ea.Mutinv(Pm=0.5, Parallel=True)  # 设置变异算子
-    # myAlgorithm.trappedValue = 1e-6  # “进化停滞”判断阈值
-    # myAlgorithm.maxTrappedCount = 30  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
-    myAlgorithm.MAXGEN = 500  # 最大进化代数
+    # myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 实例化一个算法模板对象
+    # myAlgorithm.recOper = ea.Xovdp(XOVR=0.9, Parallel=True)  # 设置交叉算子
+    # myAlgorithm.mutOper = ea.Mutinv(Pm=0.5, Parallel=True)  # 设置变异算子
+    myAlgorithm = ea.soea_psy_GGAP_SGA_templet(problem, population)
+    myAlgorithm.MAXGEN = 600  # 最大进化代数
+    # myAlgorithm.trappedValue = 1  # “进化停滞”判断阈值
+    # myAlgorithm.maxTrappedCount = myAlgorithm.MAXGEN//2  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
     myAlgorithm.verbose = True  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 1  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
     """===========================根据先验知识创建先知种群========================"""
     tmpChrom1 = np.concatenate([np.ones(L[_], dtype=int) * _ for _ in range(S)])
     tmpChrom2 = np.concatenate([np.ones(U[_], dtype=int) * (_ + S) for _ in range(T)])
-    tmpChrom3 = np.array([_ * numOfGenetic // B for _ in range(1, B)]).reshape(1,B-1)
+    tmpChrom3 = np.array([_ * numOfGenetic // B for _ in range(1, B)]).reshape(1, B - 1)
+    # for j in range(B - 1):
+    #     tmpChrom3[0][j] = tmpChrom3[0][j] + 1 if random.random() > 0.5 else tmpChrom3[0][j]
+
     np.random.shuffle(tmpChrom1)
     np.random.shuffle(tmpChrom2)
-    prophetChrom = [tmpChrom1.reshape(1,numOfGenetic), tmpChrom2[: numOfGenetic].reshape(1, numOfGenetic), tmpChrom3]
-    prophetPop=ea.PsyPopulation(Encodings, Fields, 1,prophetChrom)
+    prophetChrom = [tmpChrom1.reshape(1, numOfGenetic), tmpChrom2[: numOfGenetic].reshape(1, numOfGenetic), tmpChrom3]
+    prophetPop = ea.PsyPopulation(Encodings, Fields, 1, prophetChrom)
 
-    # np.random.shuffle(tmpChrom1)
-    # np.random.shuffle(tmpChrom2)
-    # prophetChrom = [tmpChrom1.reshape(1, numOfGenetic), tmpChrom2[: numOfGenetic].reshape(1, numOfGenetic), tmpChrom3]
-    # prophetPop2 = ea.PsyPopulation(Encodings, Fields, 1, prophetChrom)
+    for i in range(1,Nind):
+        np.random.shuffle(tmpChrom1)
+        np.random.shuffle(tmpChrom2)
+        # tmpChrom3=np.array(random.sample(range(0,numOfGenetic-2),B - 1)).reshape(1, B - 1)
+        tmpChrom3=np.array([_ * numOfGenetic // B for _ in range(1, B)]).reshape(1, B - 1)
+        for j in range(B-1):
+            tmpChrom3[0][j]=tmpChrom3[0][j]+1 if random.random()<Chrom3Probability else tmpChrom3[0][j]
+        prophetChrom = [tmpChrom1.reshape(1, numOfGenetic), tmpChrom2[: numOfGenetic].reshape(1, numOfGenetic), tmpChrom3]
+        prophetPop+=ea.PsyPopulation(Encodings, Fields, 1, prophetChrom)
 
     myAlgorithm.call_aimFunc(prophetPop)  # 计算先知种群的目标函数值及约束（假如有约束）
     """==========================调用算法模板进行种群进化========================"""
