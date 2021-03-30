@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+# 本程序主要思想：
+#   通过染色体编码格式控制交换以后的前两条染色体编码一定合法
+#   不引入CV矩阵进行合法性检查
+#   不引入先验知识
+#   插板位置依靠遗传阶段结束后的的决策算法
+#   遗传过程中控制的最优变量为所有车辆总救援时间之和
 import geatpy as ea
 import numpy as np
 from scipy.io import loadmat

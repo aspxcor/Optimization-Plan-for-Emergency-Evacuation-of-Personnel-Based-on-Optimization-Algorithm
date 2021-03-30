@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+# 本程序主要思想：
+#   不通过染色体编码格式控制交换以后的前两条染色体编码一定合法（这意味着可能会有重复）
+#   合法性检查由CV矩阵保证
+#   会额外引入若干先验知识，先验知识中插板法依据平均主义（位置的平均主义，而非时间的平均主义）
 import geatpy as ea
 import numpy as np
 from scipy.io import loadmat
