@@ -14,6 +14,7 @@ import random
 
 m = loadmat("xingguo.mat")
 B=m['BusBlank'][0][0]       # 自行设定 可控制变量
+# B=5       # 自行设定 可控制变量
 Y=m['depot'][0][0]
 S=m['ND'][0][0]
 T=m['NS'][0][0]
