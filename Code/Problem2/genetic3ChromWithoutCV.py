@@ -29,7 +29,7 @@ for i in range(S):
     STrans+=L[i]*[i]
 for i in range(T):
     TTrans+=U[i]*[i+S]
-Nind=400
+Nind=150
 SizeOfMap=10
 # Chrom3Probability=0.7
 
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     myAlgorithm.recOper = ea.Xovdp(XOVR=0.9, Parallel=True)  # 设置交叉算子
     myAlgorithm.mutOper = ea.Mutinv(Pm=0.6, Parallel=True)  # 设置变异算子
     # myAlgorithm = ea.soea_psy_GGAP_SGA_templet(problem, population)
-    myAlgorithm.MAXGEN = 500  # 最大进化代数
+    myAlgorithm.MAXGEN = 400  # 最大进化代数
     myAlgorithm.trappedValue = 1  # “进化停滞”判断阈值
     myAlgorithm.maxTrappedCount = myAlgorithm.MAXGEN//2  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志

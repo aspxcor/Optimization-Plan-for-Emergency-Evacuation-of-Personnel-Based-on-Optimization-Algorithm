@@ -28,8 +28,13 @@ for i in range(S):
     STrans+=L[i]*[i]
 for i in range(T):
     TTrans+=U[i]*[i+S]
-Nind=2000
+Nind=150
 SizeOfMap=10
+KRefAns=0.9
+
+averageDistanceYS = (sum([Dij[S + T][_] for _ in range(S)])) // S
+totalAverageDistanceST = (sum([Dij[xS][yT] for xS in range(S) for yT in range(S,S+T)])) // (int(S)*int(T))
+totalAverageDistanceTS = (sum([Dij[yT][xS] for xS in range(S) for yT in range(S, S + T)])) // (int(S) * int(T))
 
 class MyProblem(ea.Problem):  # 继承Problem父类
     def __init__(self):
@@ -45,7 +50,8 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         ea.Problem.__init__(self, name, M, maxormins, Dim, varTypes, lb, ub, lbin, ubin)        # 调用父类构造方法完成实例化
 
     def calReferObjV(self):  # 设定目标数参考值（本问题目标函数参考值设定为理论最优值）
-        referenceObjV  = np.array([[600]])
+        refAns=averageDistanceYS+int(round(numOfGenetic/B))*totalAverageDistanceST+(int(round(numOfGenetic/B))-1)*totalAverageDistanceTS
+        referenceObjV  = np.array([[int(refAns*KRefAns)]])
         return referenceObjV
 
     def aimFunc(self, pop):  # 目标函数
@@ -70,20 +76,56 @@ class MyProblem(ea.Problem):  # 继承Problem父类
             # Turn=Turns[i]
             # Turn.sort()
 
-            #按B辆车辆进行切片
-            SInTurnOfCar = [SInTurn[:Turn[0] + 1]] + [SInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [SInTurn[Turn[B-2] + 1:]]
-            TInTurnOfCar = [TInTurn[:Turn[0] + 1]] + [TInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [TInTurn[Turn[B-2] + 1:]]
+            #按B辆车辆进行切片 尽可能平均即可
+            # SInTurnOfCar = [SInTurn[:Turn[0] + 1]] + [SInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [SInTurn[Turn[B-2] + 1:]]
+            # TInTurnOfCar = [TInTurn[:Turn[0] + 1]] + [TInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [TInTurn[Turn[B-2] + 1:]]
 
-            time=np.zeros(B,dtype=int)
+            # averageDistanceST = (sum([Dij[SInTurn[_]][TInTurn[_]] for _ in range(numOfGenetic)])) // numOfGenetic
+            # averageDistanceTS = (sum([Dij[TInTurn[_]][SInTurn[_+1]] for _ in range(numOfGenetic-1)])) // numOfGenetic
+            # refObjV=int(round(numOfGenetic/B))*averageDistanceST+(int(round(numOfGenetic/B))-1)*averageDistanceTS+averageDistanceYS
+
+            tmpBlock1 = [_ * numOfGenetic // B for _ in range(1, B)]
+            SInTurnOfCar1 = [SInTurn[:tmpBlock1[0] + 1]] + [SInTurn[tmpBlock1[_] + 1:tmpBlock1[_ + 1] + 1] for _ in range(0,B-2)] + [SInTurn[tmpBlock1[B-2] + 1:]]
+            TInTurnOfCar1 = [TInTurn[:tmpBlock1[0] + 1]] + [TInTurn[tmpBlock1[_] + 1:tmpBlock1[_ + 1] + 1] for _ in range(0,B-2)] + [TInTurn[tmpBlock1[B-2] + 1:]]
+
+            tmpBlock2 = [_ * numOfGenetic // B + 1 for _ in range(1, B)]
+            SInTurnOfCar2 = [SInTurn[:tmpBlock2[0] + 1]] + [SInTurn[tmpBlock2[_] + 1:tmpBlock2[_ + 1] + 1] for _ in range(0, B - 2)] + [SInTurn[tmpBlock2[B - 2] + 1:]]
+            TInTurnOfCar2 = [TInTurn[:tmpBlock2[0] + 1]] + [TInTurn[tmpBlock2[_] + 1:tmpBlock2[_ + 1] + 1] for _ in range(0, B - 2)] + [TInTurn[tmpBlock2[B - 2] + 1:]]
+
+            tmpBlock3 = [_ * numOfGenetic // B - 1 for _ in range(1, B)]
+            SInTurnOfCar3 = [SInTurn[:tmpBlock3[0] + 1]] + [SInTurn[tmpBlock3[_] + 1:tmpBlock3[_ + 1] + 1] for _ in range(0, B - 2)] + [SInTurn[tmpBlock3[B - 2] + 1:]]
+            TInTurnOfCar3 = [TInTurn[:tmpBlock3[0] + 1]] + [TInTurn[tmpBlock3[_] + 1:tmpBlock3[_ + 1] + 1] for _ in range(0, B - 2)] + [TInTurn[tmpBlock3[B - 2] + 1:]]
+
+            time1=np.zeros(B,dtype=int)
             for carCurrent in range(B):
-                tmpTime=Dij[N-1][SInTurnOfCar[carCurrent][0]]
-                tmpTime += Dij[SInTurnOfCar[carCurrent][0]][TInTurnOfCar[carCurrent][0]]
-                for j in range(1,len(SInTurnOfCar[carCurrent])):
-                    tmpTime += Dij[TInTurnOfCar[carCurrent][j-1]][SInTurnOfCar[carCurrent][j]]
-                    tmpTime += Dij[SInTurnOfCar[carCurrent][j]][TInTurnOfCar[carCurrent][j]]
-                time[carCurrent]=tmpTime
+                tmpTime=Dij[N-1][SInTurnOfCar1[carCurrent][0]]
+                tmpTime += Dij[SInTurnOfCar1[carCurrent][0]][TInTurnOfCar1[carCurrent][0]]
+                for j in range(1,len(SInTurnOfCar1[carCurrent])):
+                    tmpTime += Dij[TInTurnOfCar1[carCurrent][j-1]][SInTurnOfCar1[carCurrent][j]]
+                    tmpTime += Dij[SInTurnOfCar1[carCurrent][j]][TInTurnOfCar1[carCurrent][j]]
+                time1[carCurrent]=tmpTime
 
-            TmaxMin[i]=time.max()
+            # TmaxMin[i] = time1.max()
+
+            time2 = np.zeros(B, dtype=int)
+            for carCurrent in range(B):
+                tmpTime = Dij[N - 1][SInTurnOfCar2[carCurrent][0]]
+                tmpTime += Dij[SInTurnOfCar2[carCurrent][0]][TInTurnOfCar2[carCurrent][0]]
+                for j in range(1, len(SInTurnOfCar2[carCurrent])):
+                    tmpTime += Dij[TInTurnOfCar2[carCurrent][j - 1]][SInTurnOfCar2[carCurrent][j]]
+                    tmpTime += Dij[SInTurnOfCar2[carCurrent][j]][TInTurnOfCar2[carCurrent][j]]
+                time2[carCurrent] = tmpTime
+
+            time3 = np.zeros(B, dtype=int)
+            for carCurrent in range(B):
+                tmpTime = Dij[N - 1][SInTurnOfCar3[carCurrent][0]]
+                tmpTime += Dij[SInTurnOfCar3[carCurrent][0]][TInTurnOfCar3[carCurrent][0]]
+                for j in range(1, len(SInTurnOfCar3[carCurrent])):
+                    tmpTime += Dij[TInTurnOfCar3[carCurrent][j - 1]][SInTurnOfCar3[carCurrent][j]]
+                    tmpTime += Dij[SInTurnOfCar3[carCurrent][j]][TInTurnOfCar3[carCurrent][j]]
+                time3[carCurrent] = tmpTime
+
+            TmaxMin[i]=min(time1.max(),time2.max(),time3.max())
 
         pop.ObjV = TmaxMin  # 计算目标函数值，赋值给pop种群对象的ObjV属性
 
@@ -187,9 +229,12 @@ if __name__ == '__main__':
     print('时间已过 %s 秒' % myAlgorithm.passTime)
     if BestIndi.sizes != 0:
         print('最小的救援时间为：%s' % BestIndi.ObjV[0][0])
-        Block = BestIndi.Phen[0, 2 * numOfGenetic:].astype(int)
-        Block.sort()
+        # Block = BestIndi.Phen[0, 2 * numOfGenetic:].astype(int)
+        # Block.sort()
         print('最优的救援方案为：')
+        for i in range(BestIndi.Phen.shape[1]):
+            print(BestIndi.Phen[0, i],end=" ")
+        print("")
         # for i in range(B):
         #     print("第"+str(i+1)+"辆车的救援路线：",end="")
         #     if i==0:
