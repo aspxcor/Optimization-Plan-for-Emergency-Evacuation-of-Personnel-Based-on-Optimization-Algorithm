@@ -3,7 +3,7 @@
 #   通过染色体编码格式控制交换以后的前两条染色体编码一定合法
 #   不引入CV矩阵进行合法性检查
 #   不引入先验知识
-#   插板位置依靠遗传阶段结束后的的决策算法
+#   插板位置依靠遗传阶段的决策算法
 #   遗传过程中控制的最优变量为所有车辆总救援时间之和
 import geatpy as ea
 import numpy as np
@@ -30,7 +30,6 @@ for i in range(T):
     TTrans+=U[i]*[i+S]
 Nind=2000
 SizeOfMap=10
-# Chrom3Probability=0.7
 
 class MyProblem(ea.Problem):  # 继承Problem父类
     def __init__(self):
@@ -40,7 +39,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         Dim = 2*numOfGenetic+B-1  # 初始化Dim（决策变量维数）  #注意 插板时两两一组
         varTypes = [1] * Dim  # 初始化varTypes（决策变量的类型，元素为0表示对应的变量是连续的；1表示是离散的）
         lb = [0] * numOfGenetic + [0] * numOfGenetic + [0] * (B-1)# 决策变量下界
-        ub = [numOfGenetic-1] * numOfGenetic + [U.sum()-1] * numOfGenetic + [numOfGenetic-2] * (B-1)# 决策变量上界
+        ub = [numOfGenetic-1] * numOfGenetic + [U.sum()-1] * numOfGenetic + [numOfGenetic-2] * (B-1)        # 决策变量上界
         lbin = [1] * Dim  # 决策变量下边界（0表示不包含该变量的下边界，1表示包含）
         ubin = [1] * Dim  # 决策变量上边界（0表示不包含该变量的上边界，1表示包含）
         ea.Problem.__init__(self, name, M, maxormins, Dim, varTypes, lb, ub, lbin, ubin)        # 调用父类构造方法完成实例化
@@ -50,22 +49,26 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         return referenceObjV
 
     def aimFunc(self, pop):  # 目标函数
+        # 将染色体解码为两部分S T
         SInTurns = pop.Phen[:, :numOfGenetic].astype(int)
         TInTurns = pop.Phen[:, numOfGenetic:2 * numOfGenetic].astype(int)
-        Turns = pop.Phen[:, 2 * numOfGenetic:].astype(int)
+        # Turns = pop.Phen[:, 2 * numOfGenetic:].astype(int)
 
+        # 将解码后的染色体翻译为不同编号的地理位置信息（从逻辑编号到物理编号）
         for t in range(Nind):
             for i in range(numOfGenetic):
                 SInTurns[t][i]=STrans[SInTurns[t][i]]
                 TInTurns[t][i] = TTrans[TInTurns[t][i]]
 
+        # 目标函数数组
         TmaxMin=np.zeros((SInTurns.shape[0], 1), dtype=np.int)
+
+        # 按Nind进行轮询
         for i in range(SInTurns.shape[0]):
             SInTurn=SInTurns[i]
             TInTurn=TInTurns[i]
-            Turn=Turns[i]
-
-            Turn.sort()
+            # Turn=Turns[i]
+            # Turn.sort()
 
             #按B辆车辆进行切片
             SInTurnOfCar = [SInTurn[:Turn[0] + 1]] + [SInTurn[Turn[_] + 1:Turn[_ + 1] + 1] for _ in range(0,B-2)] + [SInTurn[Turn[B-2] + 1:]]
@@ -137,19 +140,18 @@ if __name__ == '__main__':
     """===============================实例化问题对象==========================="""
     problem = MyProblem()  # 生成问题对象
     """=================================种群设置=============================="""
-    Encodings = ['P', 'P', 'P']  # 编码方式
+    Encodings = ['P', 'P']  # 编码方式
     NIND = Nind  # 种群规模
     Field1 = ea.crtfld(Encodings[0], problem.varTypes[:numOfGenetic], problem.ranges[:, :numOfGenetic], problem.borders[:, :numOfGenetic])
     Field2 = ea.crtfld(Encodings[1], problem.varTypes[numOfGenetic:2*numOfGenetic], problem.ranges[:, numOfGenetic:2*numOfGenetic], problem.borders[:, numOfGenetic:2*numOfGenetic])
-    Field3 = ea.crtfld(Encodings[2], problem.varTypes[2*numOfGenetic:], problem.ranges[:, 2*numOfGenetic:], problem.borders[:, 2*numOfGenetic:])
-    Fields = [Field1, Field2, Field3]  # 创建区域描述器
+    Fields = [Field1, Field2]  # 创建区域描述器
     population = ea.PsyPopulation(Encodings, Fields, NIND)  # 实例化种群对象（此时种群还没被初始化，仅仅是完成种群对象的实例化）
     """===============================算法参数设置============================="""
     myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 实例化一个算法模板对象
     myAlgorithm.recOper = ea.Xovdp(XOVR=0.9, Parallel=True)  # 设置交叉算子
     myAlgorithm.mutOper = ea.Mutinv(Pm=0.6, Parallel=True)  # 设置变异算子
     # myAlgorithm = ea.soea_psy_GGAP_SGA_templet(problem, population)
-    myAlgorithm.MAXGEN = 3000  # 最大进化代数
+    myAlgorithm.MAXGEN = 400  # 最大进化代数
     myAlgorithm.trappedValue = 1  # “进化停滞”判断阈值
     myAlgorithm.maxTrappedCount = myAlgorithm.MAXGEN//2  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
@@ -188,26 +190,26 @@ if __name__ == '__main__':
         Block = BestIndi.Phen[0, 2 * numOfGenetic:].astype(int)
         Block.sort()
         print('最优的救援方案为：')
-        for i in range(B):
-            print("第"+str(i+1)+"辆车的救援路线：",end="")
-            if i==0:
-                print("车库→",end="")
-                for j in range(Block[i]+1):
-                    print("受灾点" + str(STrans[BestIndi.Phen[0, j].astype(int)]+1) + "→",end="")
-                    print("避难所" + str(TTrans[BestIndi.Phen[0, j+numOfGenetic].astype(int)]+1) + "→",end="")
-                print("救援结束")
-            elif i==B-1:
-                print("车库→", end="")
-                for j in range(Block[i-1] + 1,numOfGenetic):
-                    print("受灾点" + str(STrans[BestIndi.Phen[0, j].astype(int)]+1) + "→", end="")
-                    print("避难所" + str(TTrans[BestIndi.Phen[0, j + numOfGenetic].astype(int)]+1) + "→", end="")
-                print("救援结束")
-            else:
-                print("车库→", end="")
-                for j in range(Block[i-1] + 1,Block[i] + 1):
-                    print("受灾点" + str(STrans[BestIndi.Phen[0, j].astype(int)]+1) + "→", end="")
-                    print("避难所" + str(TTrans[BestIndi.Phen[0, j + numOfGenetic].astype(int)]+1) + "→", end="")
-                print("救援结束")
-        DrawPointMap(BestIndi.Phen.astype(int),Block)
+        # for i in range(B):
+        #     print("第"+str(i+1)+"辆车的救援路线：",end="")
+        #     if i==0:
+        #         print("车库→",end="")
+        #         for j in range(Block[i]+1):
+        #             print("受灾点" + str(STrans[BestIndi.Phen[0, j].astype(int)]+1) + "→",end="")
+        #             print("避难所" + str(TTrans[BestIndi.Phen[0, j+numOfGenetic].astype(int)]+1) + "→",end="")
+        #         print("救援结束")
+        #     elif i==B-1:
+        #         print("车库→", end="")
+        #         for j in range(Block[i-1] + 1,numOfGenetic):
+        #             print("受灾点" + str(STrans[BestIndi.Phen[0, j].astype(int)]+1) + "→", end="")
+        #             print("避难所" + str(TTrans[BestIndi.Phen[0, j + numOfGenetic].astype(int)]+1) + "→", end="")
+        #         print("救援结束")
+        #     else:
+        #         print("车库→", end="")
+        #         for j in range(Block[i-1] + 1,Block[i] + 1):
+        #             print("受灾点" + str(STrans[BestIndi.Phen[0, j].astype(int)]+1) + "→", end="")
+        #             print("避难所" + str(TTrans[BestIndi.Phen[0, j + numOfGenetic].astype(int)]+1) + "→", end="")
+        #         print("救援结束")
+        # DrawPointMap(BestIndi.Phen.astype(int),Block)
     else:
         print('没找到可行解。')
