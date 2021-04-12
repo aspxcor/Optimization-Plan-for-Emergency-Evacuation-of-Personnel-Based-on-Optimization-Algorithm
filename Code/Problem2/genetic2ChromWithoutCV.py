@@ -5,6 +5,22 @@
 #   不引入先验知识
 #   插板位置依靠遗传阶段的决策算法
 #   遗传过程中控制的最优变量为所有车辆总救援时间之和
+"""
+soea_psy_SEGA_templet : class - Polysomy Strengthen Elitist GA templet(增强精英保留的多染色体遗传算法模板)
+算法描述:
+本模板实现的是增强精英保留的遗传算法。算法流程如下：
+1) 根据编码规则初始化N个个体的种群。
+2) 若满足停止条件则停止，否则继续执行。
+3) 对当前种群进行统计分析，比如记录其最优个体、平均适应度等等。
+4) 独立地从当前种群中选取N个母体。
+5) 独立地对这N个母体进行交叉操作。
+6) 独立地对这N个交叉后的个体进行变异。
+7) 将父代种群和交叉变异得到的种群进行合并，得到规模为2N的种群。
+8) 从合并的种群中根据选择算法选择出N个个体，得到新一代种群。
+9) 回到第2步。
+该算法宜设置较大的交叉和变异概率，否则生成的新一代种群中会有越来越多的重复个体。
+
+"""
 import geatpy as ea
 import numpy as np
 from scipy.io import loadmat
@@ -400,10 +416,15 @@ def genetic2ChromWithoutCV(B, Y, S, T, N, Dij, L, U,numOfGenetic,Nind,SizeOfMap,
     Fields = [Field1, Field2]  # 创建区域描述器
     population = ea.PsyPopulation(Encodings, Fields, NIND)  # 实例化种群对象（此时种群还没被初始化，仅仅是完成种群对象的实例化）
     """===============================算法参数设置============================="""
-    myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 实例化一个算法模板对象
-    myAlgorithm.recOper = ea.Xovdp(XOVR=0.95, Parallel=True)  # 设置交叉算子
-    myAlgorithm.mutOper = ea.Mutinv(Pm=0.7, Parallel=True)  # 设置变异算子
-    # myAlgorithm = ea.soea_psy_GGAP_SGA_templet(problem, population)
+    # myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 增强精英保留的遗传算法
+    # myAlgorithm.recOper = ea.Xovdp(XOVR=0.95, Parallel=True)  # 设置交叉算子
+    # myAlgorithm.mutOper = ea.Mutinv(Pm=0.9, Parallel=True)  # 设置变异算子
+
+    # myAlgorithm = ea.soea_psy_SGA_templet(problem, population)  # 原始版本单目标遗传算法
+    myAlgorithm = ea.soea_psy_studGA_templet(problem, population)  # 种马遗传算法
+    myAlgorithm.recOper = ea.Xovpmx(XOVR=0.95)  # 生成部分匹配交叉算子对象
+    myAlgorithm.mutOper = ea.Mutinv(Pm=0.1)  # 生成逆转变异算子对象
+    # myAlgorithm = ea.soea_psy_GGAP_SGA_templet(problem, population)   #带代沟的简单遗传算法
     myAlgorithm.MAXGEN = 1000  # 最大进化代数
     # myAlgorithm.trappedValue = 1  # “进化停滞”判断阈值
     # myAlgorithm.maxTrappedCount = myAlgorithm.MAXGEN//2  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
@@ -488,7 +509,7 @@ if __name__ == '__main__':
         STrans+=L[i]*[i]
     for i in range(T):
         TTrans+=U[i]*[i+S]
-    Nind=200
+    Nind=2000
     SizeOfMap=10
     KRefAns=0.5
 
