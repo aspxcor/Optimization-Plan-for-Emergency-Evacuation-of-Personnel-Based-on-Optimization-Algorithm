@@ -5,22 +5,7 @@
 #   不引入先验知识
 #   插板位置依靠遗传阶段的决策算法
 #   遗传过程中控制的最优变量为所有车辆总救援时间之和
-"""
-soea_psy_SEGA_templet : class - Polysomy Strengthen Elitist GA templet(增强精英保留的多染色体遗传算法模板)
-算法描述:
-本模板实现的是增强精英保留的遗传算法。算法流程如下：
-1) 根据编码规则初始化N个个体的种群。
-2) 若满足停止条件则停止，否则继续执行。
-3) 对当前种群进行统计分析，比如记录其最优个体、平均适应度等等。
-4) 独立地从当前种群中选取N个母体。
-5) 独立地对这N个母体进行交叉操作。
-6) 独立地对这N个交叉后的个体进行变异。
-7) 将父代种群和交叉变异得到的种群进行合并，得到规模为2N的种群。
-8) 从合并的种群中根据选择算法选择出N个个体，得到新一代种群。
-9) 回到第2步。
-该算法宜设置较大的交叉和变异概率，否则生成的新一代种群中会有越来越多的重复个体。
 
-"""
 import geatpy as ea
 import numpy as np
 from scipy.io import loadmat
@@ -110,7 +95,7 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
             for j in range(self.numOfGenetic - 1):
                 sumFromTToS += Dij[TInTurn[j]][SInTurn[j + 1]]
             avgFromTToS = sumFromTToS / (self.numOfGenetic - 1)
-            avgTime = round((DijFirst + sumFromSToT + avgFromTToS * (self.numOfGenetic - B)) / B)
+            avgTime = round((DijFirst + sumFromSToT + avgFromTToS * (self.numOfGenetic - B)) / B)           #这里可能有错！
 
             blockCount=0
             blockList=[]
