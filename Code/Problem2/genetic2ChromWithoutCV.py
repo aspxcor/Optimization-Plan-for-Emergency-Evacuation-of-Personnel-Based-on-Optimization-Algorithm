@@ -55,11 +55,6 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
         referenceObjV  = np.array([[int(refAns*self.KRefAns)]])
         return referenceObjV
 
-    # def aimFunc(self,pop):
-    #     Vars = pop.Phen  # 得到决策变量矩阵
-    #     args = [Vars,self.B,self.Y,self.S,self.T,self.N,self.Dij,self.L,self.U,self.averageDistanceYS,self.totalAverageDistanceST,self.totalAverageDistanceTS,self.numOfGenetic,self.Nind,self.SizeOfMap,self.KRefAns,self.STrans,self.TTrans]
-    #     pop.ObjV = np.array(list(futures.map(subAimFunc, args)))  # 调用SCOOP的map函数进行分布式计算，并构造种群所有个体的目标函数值矩阵ObjV
-
     def aimFunc(self, pop):  # 目标函数
         # 将染色体解码为两部分S T
         SInTurns = pop.Phen[:, :self.numOfGenetic].astype(int)
@@ -73,7 +68,7 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
 
         # 目标函数数组
         TmaxMin=np.zeros((SInTurns.shape[0], 1), dtype=np.int)
-        DijFirst=self.Dij[S+T][:S].sum()
+        DijFirst=self.Dij[self.S+self.T][:self.S].sum()
 
         # 按Nind进行轮询
         for i in range(SInTurns.shape[0]):
@@ -91,11 +86,12 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
             sumFromSToT = 0
             sumFromTToS = 0
             for j in range(self.numOfGenetic):
-                sumFromSToT += Dij[SInTurn[j]][TInTurn[j]]
+                sumFromSToT += self.Dij[SInTurn[j]][TInTurn[j]]
             for j in range(self.numOfGenetic - 1):
-                sumFromTToS += Dij[TInTurn[j]][SInTurn[j + 1]]
+                sumFromTToS += self.Dij[TInTurn[j]][SInTurn[j + 1]]
             avgFromTToS = sumFromTToS / (self.numOfGenetic - 1)
-            avgTime = round((DijFirst + sumFromSToT + avgFromTToS * (self.numOfGenetic - B)) / B)           #这里可能有错！
+            # avgTime = round(DijFirst*self.B/self.S + (sumFromSToT + avgFromTToS * (self.numOfGenetic - self.B)) / self.B)
+            avgTime = round((DijFirst + sumFromSToT + avgFromTToS * (self.numOfGenetic - self.B)) / self.B)           #这里可能有错！
 
             blockCount=0
             blockList=[]
@@ -112,8 +108,8 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
                     blockCount+=1
                     continue
                 # print("blockCount=", blockCount,"blockStartPosition=",blockStartPosition)
-                tmpTurnTime=Dij[S+T][SInTurn[blockStartPosition]]
-                tmpTurnTime+=Dij[SInTurn[blockStartPosition]][TInTurn[blockStartPosition]]
+                tmpTurnTime=self.Dij[self.S+self.T][SInTurn[blockStartPosition]]
+                tmpTurnTime+=self.Dij[SInTurn[blockStartPosition]][TInTurn[blockStartPosition]]
                 if tmpTurnTime>avgTime:
                     blockCount+=1
                     blockList.append(blockStartPosition)
@@ -121,13 +117,13 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
                 else:
                     isFindFlag=False
                     for t in range(blockStartPosition+1,self.numOfGenetic):
-                        tmpTurnTime+=Dij[TInTurn[t-1]][SInTurn[t]]
-                        tmpTurnTime+=Dij[SInTurn[t]][TInTurn[t]]
+                        tmpTurnTime+=self.Dij[TInTurn[t-1]][SInTurn[t]]
+                        tmpTurnTime+=self.Dij[SInTurn[t]][TInTurn[t]]
                         if tmpTurnTime>avgTime:
                             blockCount += 1
                             isFindFlag=True
                             # blockList.append(t - 1)
-                            if tmpTurnTime-avgTime>avgTime-tmpTurnTime+Dij[SInTurn[t]][TInTurn[t]]+Dij[TInTurn[t-1]][SInTurn[t]]:
+                            if tmpTurnTime-avgTime>avgTime-tmpTurnTime+self.Dij[SInTurn[t]][TInTurn[t]]+self.Dij[TInTurn[t-1]][SInTurn[t]]:
                                 blockList.append(t-1)
                             else:
                                 blockList.append(t)
@@ -210,133 +206,6 @@ class genetic2ChromWithoutCVProblem(ea.Problem):  # 继承Problem父类
 
         pop.ObjV = TmaxMin  # 计算目标函数值，赋值给pop种群对象的ObjV属性
 
-# def subAimFunc(args):  # 目标函数
-#     # 将染色体解码为两部分S T
-#     B = args[1]
-#     Y = args[2]
-#     S = args[3]
-#     T = args[4]
-#     N = args[5]
-#     Dij = args[6]
-#     L = args[7]
-#     U = args[8]
-#     averageDistanceYS = args[9]
-#     totalAverageDistanceST = args[10]
-#     totalAverageDistanceTS = args[11]
-#     numOfGenetic = args[12]
-#     Nind = args[13]
-#     SizeOfMap = args[14]
-#     KRefAns = args[15]
-#     STrans = args[16]
-#     TTrans = args[17]
-#     # print(args[0])
-#     print(args.shape)
-#     SInTurns = args[0][:, :numOfGenetic].astype(int)
-#     TInTurns = args[0][:, numOfGenetic:2 * numOfGenetic].astype(int)
-#
-#     # 将解码后的染色体翻译为不同编号的地理位置信息（从逻辑编号到物理编号）
-#     for t in range(Nind):
-#         for i in range(numOfGenetic):
-#             SInTurns[t][i] = STrans[SInTurns[t][i]]
-#             TInTurns[t][i] = TTrans[TInTurns[t][i]]
-#
-#     # 目标函数数组
-#     TmaxMin=np.zeros((SInTurns.shape[0], 1), dtype=np.int)
-#     DijFirst=Dij[S+T][:S].sum()
-#
-#     # 按Nind进行轮询
-#     for i in range(SInTurns.shape[0]):
-#         SInTurn=SInTurns[i]
-#         TInTurn=TInTurns[i]
-#
-#         #按B辆车辆进行切片 尽可能平均即可
-#         sumFromSToT = 0
-#         sumFromTToS = 0
-#         for j in range(numOfGenetic):
-#             sumFromSToT += Dij[SInTurn[j]][TInTurn[j]]
-#         for j in range(numOfGenetic - 1):
-#             sumFromTToS += Dij[TInTurn[j]][SInTurn[j + 1]]
-#         avgFromTToS = sumFromTToS / (numOfGenetic - 1)
-#         avgTime = round((DijFirst + sumFromSToT + avgFromTToS * (numOfGenetic - B)) / B)
-#
-#         blockCount=0
-#         blockList=[]
-#         while blockCount<B-1:
-#             blockStartPosition=0 if blockCount==0 else blockList[blockCount-1]+1
-#             #防止blockStartPosition=numOfGenetic的特别处理
-#             if blockStartPosition==numOfGenetic:
-#                 if blockList[-2]!=numOfGenetic-3:
-#                     blockList[-1]=numOfGenetic-3
-#                 else:
-#                     blockList[-2]=blockList[-3]+1
-#                     blockList[-1] = numOfGenetic - 3
-#                 blockList.append(numOfGenetic-2)
-#                 blockCount+=1
-#                 continue
-#             # print("blockCount=", blockCount,"blockStartPosition=",blockStartPosition)
-#             tmpTurnTime=Dij[S+T][SInTurn[blockStartPosition]]
-#             tmpTurnTime+=Dij[SInTurn[blockStartPosition]][TInTurn[blockStartPosition]]
-#             if tmpTurnTime>avgTime:
-#                 blockCount+=1
-#                 blockList.append(blockStartPosition)
-#                 # continue
-#             else:
-#                 isFindFlag=False
-#                 for t in range(blockStartPosition+1,numOfGenetic):
-#                     tmpTurnTime+=Dij[TInTurn[t-1]][SInTurn[t]]
-#                     tmpTurnTime+=Dij[SInTurn[t]][TInTurn[t]]
-#                     if tmpTurnTime>avgTime:
-#                         blockCount += 1
-#                         isFindFlag=True
-#                         # blockList.append(t - 1)
-#                         if tmpTurnTime-avgTime>avgTime-tmpTurnTime+Dij[SInTurn[t]][TInTurn[t]]+Dij[TInTurn[t-1]][SInTurn[t]]:
-#                             blockList.append(t-1)
-#                         else:
-#                             blockList.append(t)
-#                         break
-#                 if isFindFlag is False:
-#                     blockCount+=1
-#                     if blockStartPosition!=numOfGenetic-1:
-#                         blockList.append(blockStartPosition)
-#                     else:
-#                         blockList[-1]-=1
-#                         blockList.append(numOfGenetic-2)
-#                         # print("Error,blockStartPosition==self.numOfGenetic-1")
-#         if blockList[B - 2] > numOfGenetic - 2 and blockList[B - 3] < numOfGenetic - 2:
-#             blockList[B - 2] = numOfGenetic - 2
-#         elif blockList[B - 2] > numOfGenetic - 2 and blockList[B - 3] > numOfGenetic - 2:
-#             print("Error,Both two of the end in the blockList is upper than self.numOfGenetic-2")
-#         # try:
-#         #     if blockList[self.B-2]>self.numOfGenetic-2 and blockList[self.B-3]<self.numOfGenetic-2:
-#         #         blockList[self.B - 2] = self.numOfGenetic - 2
-#         #     elif blockList[self.B-2]>self.numOfGenetic-2 and blockList[self.B-3]>self.numOfGenetic-2:
-#         #         print("Error,Both two of the end in the blockList is upper than self.numOfGenetic-2")
-#         # except IndexError:
-#         #     print("IndexError,blockList=",blockList)
-#         #     print("blockCount=",blockCount)
-#
-#
-#         # tmpBlock1 = [_ * self.numOfGenetic // self.B for _ in range(1, self.B)]
-#         SInTurnOfCar1 = [SInTurn[:blockList[0] + 1]] + [SInTurn[blockList[_] + 1:blockList[_ + 1] + 1] for _ in range(0,B-2)] + [SInTurn[blockList[B-2] + 1:]]
-#         TInTurnOfCar1 = [TInTurn[:blockList[0] + 1]] + [TInTurn[blockList[_] + 1:blockList[_ + 1] + 1] for _ in range(0,B-2)] + [TInTurn[blockList[B-2] + 1:]]
-#
-#         time1=np.zeros(B,dtype=int)
-#         for carCurrent in range(B):
-#             try:
-#                 tmpTime=Dij[N-1][SInTurnOfCar1[carCurrent][0]]
-#             except IndexError:
-#                 print("IndexError,carCurrent=",carCurrent,"SInTurnOfCar1=",SInTurnOfCar1)
-#                 print(blockList)
-#             tmpTime += Dij[SInTurnOfCar1[carCurrent][0]][TInTurnOfCar1[carCurrent][0]]
-#             for j in range(1,len(SInTurnOfCar1[carCurrent])):
-#                 tmpTime += Dij[TInTurnOfCar1[carCurrent][j-1]][SInTurnOfCar1[carCurrent][j]]
-#                 tmpTime += Dij[SInTurnOfCar1[carCurrent][j]][TInTurnOfCar1[carCurrent][j]]
-#             time1[carCurrent]=tmpTime
-#
-#         TmaxMin[i] = time1.max()
-#
-#     return TmaxMin  # 计算目标函数值，赋值给pop种群对象的ObjV属性
-
 def DrawPointMap(Chromosome,Block):
     SPlotInOrder = [STrans[_] for _ in Chromosome[0, :numOfGenetic]]
     TPlotInOrder = [TTrans[_] - S for _ in Chromosome[0, numOfGenetic:2 * numOfGenetic]]
@@ -401,18 +270,18 @@ def genetic2ChromWithoutCV(B, Y, S, T, N, Dij, L, U,numOfGenetic,Nind,SizeOfMap,
     Fields = [Field1, Field2]  # 创建区域描述器
     population = ea.PsyPopulation(Encodings, Fields, NIND)  # 实例化种群对象（此时种群还没被初始化，仅仅是完成种群对象的实例化）
     """===============================算法参数设置============================="""
-    # myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 增强精英保留的遗传算法
-    # myAlgorithm.recOper = ea.Xovdp(XOVR=0.95, Parallel=True)  # 设置交叉算子
-    # myAlgorithm.mutOper = ea.Mutinv(Pm=0.9, Parallel=True)  # 设置变异算子
-
+    myAlgorithm = ea.soea_psy_SEGA_templet(problem, population)  # 增强精英保留的遗传算法
+    myAlgorithm.recOper = ea.Xovdp(XOVR=0.95, Parallel=True)  # 设置交叉算子
+    myAlgorithm.mutOper = ea.Mutinv(Pm=0.9, Parallel=True)  # 设置变异算子
+    #
     # myAlgorithm = ea.soea_psy_SGA_templet(problem, population)  # 原始版本单目标遗传算法
-    myAlgorithm = ea.soea_psy_studGA_templet(problem, population)  # 种马遗传算法
-    myAlgorithm.recOper = ea.Xovpmx(XOVR=0.95)  # 生成部分匹配交叉算子对象
-    myAlgorithm.mutOper = ea.Mutinv(Pm=0.1)  # 生成逆转变异算子对象
+    # myAlgorithm = ea.soea_psy_studGA_templet(problem, population)  # 种马遗传算法
+    # myAlgorithm.recOper = ea.Xovpmx(XOVR=0.95)  # 生成部分匹配交叉算子对象
+    # myAlgorithm.mutOper = ea.Mutinv(Pm=0.1)  # 生成逆转变异算子对象
     # myAlgorithm = ea.soea_psy_GGAP_SGA_templet(problem, population)   #带代沟的简单遗传算法
-    myAlgorithm.MAXGEN = 1000  # 最大进化代数
-    # myAlgorithm.trappedValue = 1  # “进化停滞”判断阈值
-    # myAlgorithm.maxTrappedCount = myAlgorithm.MAXGEN//2  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
+    myAlgorithm.MAXGEN = 400  # 最大进化代数
+    myAlgorithm.trappedValue = 1  # “进化停滞”判断阈值
+    myAlgorithm.maxTrappedCount = myAlgorithm.MAXGEN//2  # 进化停滞计数器最大上限值，如果连续maxTrappedCount代被判定进化陷入停滞，则终止进化
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
     myAlgorithm.verbose = True  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 1  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
